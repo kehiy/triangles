@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o alienos --tags libsecp256k1
+RUN go build -o triangles --tags libsecp256k1
 
 FROM alpine:latest
 
