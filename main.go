@@ -16,6 +16,7 @@ import (
 	"github.com/fogleman/primitive/primitive"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/nbd-wtf/go-nostr"
+	"github.com/nbd-wtf/go-nostr/nip13"
 	"github.com/nbd-wtf/go-nostr/nip19"
 	"github.com/nfnt/resize"
 )
@@ -23,7 +24,7 @@ import (
 const (
 	INPUT_FILENAME  = "triangles-nbot-in.png"
 	OUTPUT_FILENAME = "triangles-nbot-out.png"
-	RELAY_URL       = "wss://nostr.wine"
+	RELAY_URL       = "wss://jellyfish.land"
 )
 
 var s Settings
@@ -34,13 +35,23 @@ type Settings struct {
 }
 
 func main() {
+	ticker := time.NewTicker(6 * time.Hour)
+	defer ticker.Stop()
+
 	if err := envconfig.Process("", &s); err != nil {
 		log.Fatalf("failed to read from env: %s", err)
 		return
 	}
 
+	for range ticker.C {
+		upload()
+	}
+}
+
+func upload() {
 	// get random picture from unsplash
-	resp, err := http.Get("https://api.unsplash.com/photos/random?client_id=" + s.UnsplashClientID + "&topics=nature,cathedral,outdoors,landscape,cafe,restaurante")
+	resp, err := http.Get("https://api.unsplash.com/photos/random?client_id=" +
+		s.UnsplashClientID + "&topics=nature,cathedral,outdoors,landscape,cafe,restaurante")
 	if err != nil {
 		log.Fatalf("unsplash call failed: %s", err)
 		return
@@ -59,6 +70,16 @@ func main() {
 		Links struct {
 			HTML string `json:"html"`
 		} `json:"links"`
+		BlurHash string `json:"blur_hash"`
+		Width    int    `json:"width"`
+		Height   int    `json:"height"`
+		Desc     string `json:"alt_description"`
+		Location struct {
+			Name string `json:"name"`
+		} `json:"location"`
+		Tags []struct {
+			Title string `json:"title"`
+		} `json:"tags"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&unsp); err != nil {
@@ -90,8 +111,14 @@ func main() {
 	}
 
 	// generate primitive image
-	rand.Seed(time.Now().UTC().UnixNano())
+	rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
+
 	input, err := primitive.LoadImage(inputpath)
+	if err != nil {
+		log.Fatalf("failed to create primitive: %s", err)
+		return
+	}
+
 	if _, err := io.Copy(file, resp.Body); err != nil {
 		log.Fatalf("failed to create primitive: %s", err)
 		return
@@ -157,15 +184,58 @@ func main() {
 		return
 	}
 
+	content := fmt.Sprintf("%s\n", unsp.Desc)
+	for _, t := range unsp.Tags {
+		content += fmt.Sprintf("\n#%s\n", t.Title)
+	}
+
+	tags := nostr.Tags{}
+	tags = append(tags, nostr.Tag{
+		"title",
+		"Photo posted by https://github.com/kehiy/triangles",
+	})
+
+	tags = append(tags, nostr.Tag{
+		"imeta",
+		fmt.Sprintf("url %s", image.URL),
+		"m image/jpeg",
+		fmt.Sprintf("blurhash %s", unsp.BlurHash),
+		fmt.Sprintf("dim %dx%d", unsp.Width, unsp.Height),
+		fmt.Sprintf("alt %s", unsp.Desc),
+		"fallback https://nostrcheck.me/alt2.jpg",
+		"fallback https://void.cat/alt2.jpg",
+	})
+
+	tags = append(tags, nostr.Tag{
+		"imeta",
+		fmt.Sprintf("url %s", unsp.URLs.Regular),
+		"m image/jpeg",
+		fmt.Sprintf("blurhash %s", unsp.BlurHash),
+		fmt.Sprintf("dim %dx%d", unsp.Width, unsp.Height),
+		fmt.Sprintf("alt %s", unsp.Desc),
+		"fallback https://nostrcheck.me/alt2.jpg",
+		"fallback https://void.cat/alt2.jpg",
+	})
+
+	for _, t := range unsp.Tags {
+		tags = append(tags, nostr.Tag{"t", t.Title})
+	}
+
 	// publish nostr event
 	event := nostr.Event{
 		CreatedAt: nostr.Now(),
-		Kind:      1,
-		Content:   fmt.Sprintf("%s \n#triangles %s", image.URL, unsp.Links.HTML),
-		Tags: nostr.Tags{
-			nostr.Tag{"t", "triangles"},
-		},
+		Kind:      20,
+		Content:   content,
+		Tags:      tags,
 	}
+
+	pow, err := nip13.DoWork(context.Background(), event, 21)
+	if err != nil {
+		log.Fatalf("can't do pow: %s", err)
+	}
+
+	event.Tags = append(event.Tags, pow)
+
 	event.Sign(s.SecretKey)
 
 	relay, err := nostr.RelayConnect(context.Background(), RELAY_URL)
@@ -174,7 +244,7 @@ func main() {
 		return
 	}
 
-	if _, err := relay.Publish(context.Background(), event); err != nil {
+	if err := relay.Publish(context.Background(), event); err != nil {
 		log.Fatalf("failed to publish: %s", err)
 		return
 	}
@@ -182,5 +252,5 @@ func main() {
 	fmt.Println(event)
 
 	nevent, _ := nip19.EncodeEvent(event.ID, []string{RELAY_URL}, "")
-	fmt.Println("https://nostr.com/" + nevent)
+	fmt.Println("https://njump.me/" + nevent)
 }
