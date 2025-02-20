@@ -26,14 +26,14 @@ const (
 	OUTPUT_FILENAME = "triangles-out.png"
 )
 
-var (
-	relayURLs = []string{"wss://jellyfish.land", "wss://nos.lol", "wss://relay.olas.app"}
-	s         Settings
-)
+var s Settings
 
 type Settings struct {
-	SecretKey        string `envconfig:"SECRET_KEY"`
-	UnsplashClientID string `envconfig:"UNSPLASH_CLIENT_ID"`
+	SecretKey        string   `envconfig:"SECRET_KEY"`
+	UnsplashClientID string   `envconfig:"UNSPLASH_CLIENT_ID"`
+	RelayURLs        []string `envconfig:"RELAY_URLS"`
+	PostingDuration  int      `envconfig:"POSTING_DURATION"`
+	PoW              int      `envconfig:"POW"`
 }
 
 func main() {
@@ -246,7 +246,7 @@ func upload() {
 	}
 
 	log.Print("doing work...")
-	pow, err := nip13.DoWork(context.Background(), event, 21)
+	pow, err := nip13.DoWork(context.Background(), event, s.PoW)
 	if err != nil {
 		log.Fatalf("can't do pow: %s", err)
 	}
@@ -257,20 +257,20 @@ func upload() {
 
 	log.Print("signed event: ", event.String())
 
-	for _, ru := range relayURLs {
+	for _, ru := range s.RelayURLs {
 		log.Printf("publising to relay: %s", ru)
 		relay, err := nostr.RelayConnect(context.Background(), ru)
 		if err != nil {
 			log.Fatalf("failed to connect: %s", err)
-			return
+			continue
 		}
 
 		if err := relay.Publish(context.Background(), event); err != nil {
 			log.Fatalf("failed to publish: %s", err)
-			return
+			continue
 		}
 	}
 
-	nevent, _ := nip19.EncodeEvent(event.ID, relayURLs, "")
+	nevent, _ := nip19.EncodeEvent(event.ID, s.RelayURLs, "")
 	fmt.Println("https://njump.me/" + nevent)
 }

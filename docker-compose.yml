@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  triangles:
+    image:  ghcr.io/kehiy/triangles:v1.1.0
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.type == primary
+          - node.role == worker
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: "64M"
+        reservations:
+          cpus: "0.2"
+          memory: "64M"
+    environment:
+      - SECRET_KEY=""
+      - UNSPLASH_CLIENT_ID=""
+      - RELAY_URLS="wss://jellyfish.land,wss://nos.lol,wss://relay.olas.app,wss://olas.app,wss://relay.primal.net,wss://relay.damus.io"
+      - POSTING_DURATION="6"
+      - POW="21"

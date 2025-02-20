@@ -1,0 +1,29 @@
+FROM golang:1.23.3-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+
+RUN go mod download
+
+COPY . .
+
+RUN go build .
+
+FROM alpine:latest
+
+COPY --from=builder /app/triangles /usr/local/bin/triangles
+
+ARG SECRET_KEY
+ARG UNSPLASH_CLIENT_ID
+ARG RELAY_URLS
+ARG POSTING_DURATION
+ARG POW
+
+ENV SECRET_KEY=SECRET_KEY
+ENV UNSPLASH_CLIENT_ID=UNSPLASH_CLIENT_ID
+ENV RELAY_URLS=RELAY_URLS
+ENV POSTING_DURATION=POSTING_DURATION
+ENV POW=POW
+
+CMD ["triangles"]
