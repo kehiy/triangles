@@ -22,12 +22,15 @@ import (
 )
 
 const (
-	INPUT_FILENAME  = "triangles-nbot-in.png"
-	OUTPUT_FILENAME = "triangles-nbot-out.png"
-	RELAY_URL       = "wss://jellyfish.land"
+	INPUT_FILENAME  = "triangles-in.png"
+	OUTPUT_FILENAME = "triangles-out.png"
 )
 
-var s Settings
+
+var (
+	relayURLs = []string{"wss://jellyfish.land", "wss://nos.lol", "wss://relay.olas.app"}
+	s Settings
+)
 
 type Settings struct {
 	SecretKey        string `envconfig:"SECRET_KEY"`
@@ -35,7 +38,8 @@ type Settings struct {
 }
 
 func main() {
-	ticker := time.NewTicker(6 * time.Hour)
+	log.Printf("starting bot...")
+	ticker := time.NewTicker(6 * time.Second)
 	defer ticker.Stop()
 
 	if err := envconfig.Process("", &s); err != nil {
@@ -43,12 +47,16 @@ func main() {
 		return
 	}
 
+	log.Print("config loaded successfully.")
+
 	for range ticker.C {
+		log.Print("posting new kind 20...")
 		upload()
 	}
 }
 
 func upload() {
+	log.Print("getting image from unsplash...")
 	// get random picture from unsplash
 	resp, err := http.Get("https://api.unsplash.com/photos/random?client_id=" +
 		s.UnsplashClientID + "&topics=nature,cathedral,outdoors,landscape,cafe,restaurante")
@@ -86,6 +94,7 @@ func upload() {
 		log.Fatalf("unsplash decode failed: %s", err)
 	}
 
+	log.Print("creating temp image file...")
 	// prepare files (this is not really necessary, we should just load stuff from memory)
 	inputpath := filepath.Join(os.TempDir(), INPUT_FILENAME)
 	outputpath := filepath.Join(os.TempDir(), OUTPUT_FILENAME)
@@ -110,6 +119,7 @@ func upload() {
 		return
 	}
 
+	log.Print("processing image...")
 	// generate primitive image
 	rand.New(rand.NewSource(time.Now().UTC().UnixNano()))
 
@@ -137,6 +147,7 @@ func upload() {
 		return
 	}
 
+	log.Print("authorizing and uploading processed image to blossom server...")
 	// publish to satellite
 	uploadEvent := nostr.Event{
 		CreatedAt: nostr.Now(),
@@ -184,6 +195,7 @@ func upload() {
 		return
 	}
 
+	log.Print("creating kind 20 post...")
 	content := fmt.Sprintf("%s\n", unsp.Desc)
 	for _, t := range unsp.Tags {
 		content += fmt.Sprintf("\n#%s\n", t.Title)
@@ -223,14 +235,18 @@ func upload() {
 		tags = append(tags, nostr.Tag{"t", t.Title})
 	}
 
+	pubkey, _ := nostr.GetPublicKey(s.SecretKey)
+
 	// publish nostr event
 	event := nostr.Event{
+		PubKey:    pubkey,
 		CreatedAt: nostr.Now(),
 		Kind:      20,
 		Content:   content,
 		Tags:      tags,
 	}
 
+	log.Print("doing work...")
 	pow, err := nip13.DoWork(context.Background(), event, 21)
 	if err != nil {
 		log.Fatalf("can't do pow: %s", err)
@@ -240,19 +256,22 @@ func upload() {
 
 	event.Sign(s.SecretKey)
 
-	relay, err := nostr.RelayConnect(context.Background(), RELAY_URL)
-	if err != nil {
-		log.Fatalf("failed to connect: %s", err)
-		return
+	log.Print("signed event: ", event.String())
+
+	for _, ru := range relayURLs {
+		log.Printf("publising to relay: %s", ru)
+		relay, err := nostr.RelayConnect(context.Background(), ru)
+		if err != nil {
+			log.Fatalf("failed to connect: %s", err)
+			return
+		}
+
+		if err := relay.Publish(context.Background(), event); err != nil {
+			log.Fatalf("failed to publish: %s", err)
+			return
+		}
 	}
 
-	if err := relay.Publish(context.Background(), event); err != nil {
-		log.Fatalf("failed to publish: %s", err)
-		return
-	}
-
-	fmt.Println(event)
-
-	nevent, _ := nip19.EncodeEvent(event.ID, []string{RELAY_URL}, "")
+	nevent, _ := nip19.EncodeEvent(event.ID, relayURLs, "")
 	fmt.Println("https://njump.me/" + nevent)
 }
