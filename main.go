@@ -26,10 +26,9 @@ const (
 	OUTPUT_FILENAME = "triangles-out.png"
 )
 
-
 var (
 	relayURLs = []string{"wss://jellyfish.land", "wss://nos.lol", "wss://relay.olas.app"}
-	s Settings
+	s         Settings
 )
 
 type Settings struct {
@@ -39,7 +38,7 @@ type Settings struct {
 
 func main() {
 	log.Printf("starting bot...")
-	ticker := time.NewTicker(6 * time.Second)
+	ticker := time.NewTicker(6 * time.Hour)
 	defer ticker.Stop()
 
 	if err := envconfig.Process("", &s); err != nil {
@@ -204,7 +203,7 @@ func upload() {
 	tags := nostr.Tags{}
 	tags = append(tags, nostr.Tag{
 		"title",
-		"Photo posted by https://github.com/kehiy/triangles",
+		unsp.Desc,
 	})
 
 	tags = append(tags, nostr.Tag{
