@@ -37,8 +37,8 @@ type Settings struct {
 }
 
 func main() {
-	log.Printf("starting bot...")
-	ticker := time.NewTicker(6 * time.Hour)
+	log.Printf("starting %s", stringVersion())
+	ticker := time.NewTicker(time.Duration(s.PostingDuration) * time.Hour)
 	defer ticker.Stop()
 
 	if err := envconfig.Process("", &s); err != nil {
@@ -47,6 +47,9 @@ func main() {
 	}
 
 	log.Print("config loaded successfully.")
+
+	// uploads on start.
+	upload()
 
 	for range ticker.C {
 		log.Print("posting new kind 20...")

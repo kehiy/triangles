@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   triangles:
-    image:  ghcr.io/kehiy/triangles:v1.1.0
+    image:  ghcr.io/kehiy/triangles:latest
     deploy:
       replicas: 1
       restart_policy:
