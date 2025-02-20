@@ -267,13 +267,19 @@ func upload() {
 		relay, err := nostr.RelayConnect(context.Background(), ru)
 		if err != nil {
 			log.Printf("failed to connect: %s", err)
+			relay.Close()
+
 			continue
 		}
 
 		if err := relay.Publish(context.Background(), event); err != nil {
 			log.Printf("failed to publish: %s", err)
+			relay.Close()
+
 			continue
 		}
+
+		relay.Close()
 	}
 
 	nevent, _ := nip19.EncodeEvent(event.ID, s.RelayURLs, "")
