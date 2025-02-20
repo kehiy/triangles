@@ -29,28 +29,29 @@ const (
 var s Settings
 
 type Settings struct {
-	SecretKey        string   `envconfig:"SECRET_KEY"`
-	UnsplashClientID string   `envconfig:"UNSPLASH_CLIENT_ID"`
-	RelayURLs        []string `envconfig:"RELAY_URLS"`
-	PostingDuration  int      `envconfig:"POSTING_DURATION"`
-	PoW              int      `envconfig:"POW"`
+	SecretKey        string        `envconfig:"SECRET_KEY"`
+	UnsplashClientID string        `envconfig:"UNSPLASH_CLIENT_ID"`
+	RelayURLs        []string      `envconfig:"RELAY_URLS"`
+	PostingDuration  time.Duration `envconfig:"POSTING_DURATION"`
+	PoW              int           `envconfig:"POW"`
 }
 
 func main() {
 	log.Printf("starting %s", stringVersion())
-	ticker := time.NewTicker(time.Duration(s.PostingDuration) * time.Hour)
-	defer ticker.Stop()
 
 	if err := envconfig.Process("", &s); err != nil {
 		log.Fatalf("failed to read from env: %s", err)
 		return
 	}
 
-	log.Print("config loaded successfully.")
+	ticker := time.NewTicker(s.PostingDuration)
+	defer ticker.Stop()
 
 	// uploads on start.
+	log.Printf("posting first event...")
 	upload()
 
+	log.Printf("posting every %s", s.PostingDuration)
 	for range ticker.C {
 		log.Print("posting new kind 20...")
 		upload()

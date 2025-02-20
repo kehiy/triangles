@@ -22,5 +22,5 @@ services:
       - SECRET_KEY=""
       - UNSPLASH_CLIENT_ID=""
       - RELAY_URLS="wss://jellyfish.land,wss://nos.lol,wss://relay.olas.app,wss://olas.app,wss://relay.primal.net,wss://relay.damus.io"
-      - POSTING_DURATION="6"
+      - POSTING_DURATION="6h"
       - POW="21"
