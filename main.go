@@ -202,6 +202,7 @@ func upload() {
 		fmt.Sprintf("blurhash %s", unsp.BlurHash),
 		fmt.Sprintf("dim %dx%d", unsp.Width, unsp.Height),
 		fmt.Sprintf("alt %s", unsp.Desc),
+		fmt.Sprintf("location %s", unsp.Location.Name),
 		"fallback https://nostrcheck.me/alt2.jpg",
 		"fallback https://void.cat/alt2.jpg",
 	})
@@ -213,6 +214,7 @@ func upload() {
 		fmt.Sprintf("blurhash %s", unsp.BlurHash),
 		fmt.Sprintf("dim %dx%d", unsp.Width, unsp.Height),
 		fmt.Sprintf("alt %s", unsp.Desc),
+		fmt.Sprintf("location %s", unsp.Location.Name),
 		"fallback https://nostrcheck.me/alt2.jpg",
 		"fallback https://void.cat/alt2.jpg",
 	})
