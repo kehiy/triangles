@@ -1,6 +1,6 @@
 ## Triangles
 
-This project is nostr bot which used a nostr secret key and an unsplash api key to publish tirangleized images on kind 20 images feeds. you can use clients like olas to see them.
+This project is a Nostr bot which uses a Nostr secret key and an Unsplash api key to publish tirangleized images on kind 20 images feeds. you can use clients like [Olas](https://olas.app) to see them.
 
 Example account:
 
