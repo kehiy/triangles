@@ -64,13 +64,13 @@ func upload() {
 	resp, err := http.Get("https://api.unsplash.com/photos/random?client_id=" +
 		s.UnsplashClientID + "&topics=nature,cathedral,outdoors,landscape,cafe,restaurante")
 	if err != nil {
-		log.Fatalf("unsplash call failed: %s", err)
+		log.Printf("unsplash call failed: %s", err)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		data, _ := io.ReadAll(resp.Body)
-		log.Fatalf("unsplash read failed: %s", data)
+		log.Printf("unsplash read failed: %s", data)
 	}
 
 	var unsp struct {
@@ -94,7 +94,7 @@ func upload() {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&unsp); err != nil {
-		log.Fatalf("unsplash decode failed: %s", err)
+		log.Printf("unsplash decode failed: %s", err)
 	}
 
 	log.Print("creating temp image file...")
@@ -107,18 +107,18 @@ func upload() {
 	// download file
 	resp, err = http.Get(unsp.URLs.Regular)
 	if err != nil {
-		log.Fatalf("failed to download picture: %s", err)
+		log.Printf("failed to download picture: %s", err)
 		return
 	}
 	defer resp.Body.Close()
 	file, err := os.Create(inputpath)
 	if err != nil {
-		log.Fatalf("failed to create file: %s", err)
+		log.Printf("failed to create file: %s", err)
 		return
 	}
 	defer file.Close()
 	if _, err := io.Copy(file, resp.Body); err != nil {
-		log.Fatalf("failed to save picture: %s", err)
+		log.Printf("failed to save picture: %s", err)
 		return
 	}
 
@@ -128,12 +128,12 @@ func upload() {
 
 	input, err := primitive.LoadImage(inputpath)
 	if err != nil {
-		log.Fatalf("failed to create primitive: %s", err)
+		log.Printf("failed to create primitive: %s", err)
 		return
 	}
 
 	if _, err := io.Copy(file, resp.Body); err != nil {
-		log.Fatalf("failed to create primitive: %s", err)
+		log.Printf("failed to create primitive: %s", err)
 		return
 	}
 	size := uint(256)
@@ -146,7 +146,7 @@ func upload() {
 		model.Step(primitive.ShapeTypeTriangle, 128, 0)
 	}
 	if err := primitive.SavePNG(outputpath, model.Context.Image()); err != nil {
-		log.Fatalf("failed to save primitive png: %s", err)
+		log.Printf("failed to save primitive png: %s", err)
 		return
 	}
 
@@ -161,7 +161,7 @@ func upload() {
 		},
 	}
 	if err := uploadEvent.Sign(s.SecretKey); err != nil {
-		log.Fatalf("failed to sign upload: %s", err)
+		log.Printf("failed to sign upload: %s", err)
 		return
 	}
 
@@ -172,7 +172,7 @@ func upload() {
 
 	file, err = os.Open(outputpath)
 	if err != nil {
-		log.Fatalf("failed to open file: %s", err)
+		log.Printf("failed to open file: %s", err)
 		return
 	}
 	defer file.Close()
@@ -180,13 +180,13 @@ func upload() {
 	req, _ := http.NewRequest("PUT", u.String(), file)
 	resp, err = http.DefaultClient.Do(req)
 	if err != nil {
-		log.Fatalf("failed to upload: %s", err)
+		log.Printf("failed to upload: %s", err)
 		return
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
 		data, _ := io.ReadAll(resp.Body)
-		log.Fatalf("failed to upload: %s", string(data))
+		log.Printf("failed to upload: %s", string(data))
 		return
 	}
 
@@ -194,7 +194,7 @@ func upload() {
 		URL string `json:"url"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&image); err != nil {
-		log.Fatalf("failed to decode response from satellite: %s", err)
+		log.Printf("failed to decode response from satellite: %s", err)
 		return
 	}
 
@@ -252,7 +252,8 @@ func upload() {
 	log.Print("doing work...")
 	pow, err := nip13.DoWork(context.Background(), event, s.PoW)
 	if err != nil {
-		log.Fatalf("can't do pow: %s", err)
+		log.Printf("can't do pow: %s", err)
+		return
 	}
 
 	event.Tags = append(event.Tags, pow)
@@ -265,12 +266,12 @@ func upload() {
 		log.Printf("publising to relay: %s", ru)
 		relay, err := nostr.RelayConnect(context.Background(), ru)
 		if err != nil {
-			log.Fatalf("failed to connect: %s", err)
+			log.Printf("failed to connect: %s", err)
 			continue
 		}
 
 		if err := relay.Publish(context.Background(), event); err != nil {
-			log.Fatalf("failed to publish: %s", err)
+			log.Printf("failed to publish: %s", err)
 			continue
 		}
 	}
