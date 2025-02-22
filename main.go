@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/fogleman/primitive/primitive"
@@ -32,6 +33,7 @@ type Settings struct {
 	SecretKey        string        `envconfig:"SECRET_KEY"`
 	UnsplashClientID string        `envconfig:"UNSPLASH_CLIENT_ID"`
 	RelayURLs        []string      `envconfig:"RELAY_URLS"`
+	AdditionalTags   []string      `envconfig:"ADDITIONAL_TAGS"`
 	PostingDuration  time.Duration `envconfig:"POSTING_DURATION"`
 	PoW              int           `envconfig:"POW"`
 }
@@ -201,7 +203,12 @@ func upload() {
 	log.Print("creating kind 20 post...")
 	content := fmt.Sprintf("%s\n", unsp.Desc)
 	for _, t := range unsp.Tags {
-		content += fmt.Sprintf("\n#%s\n", t.Title)
+		t.Title = strings.Replace(t.Title, " ", "_", 10)
+		content += fmt.Sprintf(" #%s ", t.Title)
+	}
+
+	for _, t := range s.AdditionalTags {
+		content += fmt.Sprintf(" #%s ", t)
 	}
 
 	tags := nostr.Tags{}
@@ -236,6 +243,10 @@ func upload() {
 
 	for _, t := range unsp.Tags {
 		tags = append(tags, nostr.Tag{"t", t.Title})
+	}
+
+	for _, t := range s.AdditionalTags {
+		tags = append(tags, nostr.Tag{"t", t})
 	}
 
 	pubkey, _ := nostr.GetPublicKey(s.SecretKey)
